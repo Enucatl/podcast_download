@@ -1,34 +1,74 @@
-import xml.etree.ElementTree as ET
-import click
+"""
+Module: podcast_downloader
+
+This module provides a command-line utility to download podcast episodes from
+an XML feed and save them to a specified output folder.
+
+Functions:
+    - main(xml, output_folder)
+
+Usage:
+    To use this module as a command-line tool, run the script with the
+    following command:
+    
+    $ python podcast_downloader.py [XML_FILE] [OUTPUT_FOLDER]
+
+    Arguments:
+        - XML_FILE: The URL or local path to the XML feed containing podcast
+              episodes.
+        - OUTPUT_FOLDER: The local directory where downloaded podcast episodes
+              will be saved.
+
+"""
 import pathlib
-import re
-import requests
+import time
+
+from slugify import slugify
 from tqdm import tqdm
-
-
-def get_valid_filename(s):
-    # https://stackoverflow.com/a/46801075
-    s = str(s).strip().replace(' ', '_')
-    return re.sub(r'(?u)[^-\w.]', '', s)
+import click
+import feedparser
+import requests
 
 
 @click.command()
-@click.argument("filename", type=click.Path(exists=True))
+@click.argument("xml")
 @click.argument(
     "output_folder", type=click.Path(exists=True, file_okay=False, dir_okay=True)
 )
-def main(filename, output_folder):
-    tree = ET.parse(filename)
-    items = tree.findall(".//item")
-    for item in tqdm(items):
-        title = get_valid_filename(item.find("title").text)
-        url = item.find("enclosure").attrib["url"]
-        output_path = pathlib.Path(output_folder) / f"{title}.mp3"
-        if output_path.exists():
+def main(xml, output_folder):
+    """
+    Args:
+        - xml (str): The URL or local path to the XML feed containing podcast
+              episodes.
+        - output_folder (str): The local directory where downloaded podcast
+              episodes will be saved.
+
+    Returns:
+        - None
+
+    Description:
+        This is the main function that parses the podcast feed specified by the
+        'xml' argument, downloads the audio files, and saves them to the
+        specified 'output_folder'. It uses the click library for command-line
+        interface handling and tqdm for progress bar display.
+
+    """
+    feed = feedparser.parse(xml)
+    for entry in tqdm(feed.entries):
+        title = entry["title"]
+        datetime = entry["published_parsed"]
+        slug = slugify(title)
+        link = [x["href"] for x in entry["links"] if "audio" in x["type"]].pop()
+        extension = pathlib.Path(link).suffix
+        output_filename = (
+            pathlib.Path(output_folder)
+            / f"{time.strftime('%Y-%m-%d', datetime)}-{slug}{extension}"
+        )
+        if output_filename.exists():
             continue
         else:
-            request = requests.get(url)
-            with open(output_path, "wb") as output_file:
+            request = requests.get(link)
+            with open(output_filename, "wb") as output_file:
                 output_file.write(request.content)
 
 
