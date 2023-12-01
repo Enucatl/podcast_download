@@ -1,8 +1,4 @@
-"""
-Module: podcast_downloader
-
-This module provides a command-line utility to download podcast episodes from
-an XML feed and save them to a specified output folder.
+"""A command-line utility to download podcast episodes from an XML feed.
 
 Functions:
     - main(xml, output_folder)
@@ -10,10 +6,11 @@ Functions:
 Usage:
     To use this module as a command-line tool, run the script with the
     following command:
-    
+
     $ python podcast_downloader.py [XML_FILE] [OUTPUT_FOLDER]
 
-    Arguments:
+Arguments:
+---------
         - XML_FILE: The URL or local path to the XML feed containing podcast
               episodes.
         - OUTPUT_FOLDER: The local directory where downloaded podcast episodes
@@ -23,27 +20,31 @@ Usage:
 import pathlib
 import time
 
-from slugify import slugify
-from tqdm import tqdm
 import click
 import feedparser
 import requests
+from slugify import slugify
+from tqdm import tqdm
 
 
 @click.command()
 @click.argument("xml")
 @click.argument(
-    "output_folder", type=click.Path(exists=True, file_okay=False, dir_okay=True)
+    "output_folder",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
 )
-def main(xml, output_folder):
-    """
+def main(xml: str, output_folder: str) -> None:
+    """Parse the XML feed and save files to the output folder.
+
     Args:
-        - xml (str): The URL or local path to the XML feed containing podcast
+    ----
+        xml (str): The URL or local path to the XML feed containing podcast
               episodes.
-        - output_folder (str): The local directory where downloaded podcast
+        output_folder (str): The local directory where downloaded podcast
               episodes will be saved.
 
     Returns:
+    -------
         - None
 
     Description:
@@ -66,10 +67,9 @@ def main(xml, output_folder):
         )
         if output_filename.exists():
             continue
-        else:
-            request = requests.get(link)
-            with open(output_filename, "wb") as output_file:
-                output_file.write(request.content)
+        request = requests.get(link, timeout=30)
+        with output_filename.open("wb") as output_file:
+            output_file.write(request.content)
 
 
 if __name__ == "__main__":

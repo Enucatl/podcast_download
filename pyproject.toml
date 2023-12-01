@@ -30,5 +30,8 @@ dev = [
 [tools.setuptools-git-versioning]
 enabled = true
 
+[tool.ruff]
+select = ["ALL"]
+
 [project.scripts]
 download_podcast = "download:main"
