@@ -19,12 +19,14 @@ Arguments:
 """
 import pathlib
 import time
+import io
 
 import click
 import feedparser
 import requests
 from slugify import slugify
 from tqdm import tqdm
+import pydub
 
 
 @click.command()
@@ -60,16 +62,19 @@ def main(xml: str, output_folder: str) -> None:
         datetime = entry["published_parsed"]
         slug = slugify(title)
         link = [x["href"] for x in entry["links"] if "audio" in x["type"]].pop()
-        extension = pathlib.Path(link).suffix
+        extension = pathlib.Path(link).suffix.lstrip(".")
         output_filename = (
             pathlib.Path(output_folder)
-            / f"{time.strftime('%Y-%m-%d', datetime)}-{slug}{extension}"
+            / f"{time.strftime('%Y-%m-%d', datetime)}-{slug}.mp3"
         )
         if output_filename.exists():
             continue
         request = requests.get(link, timeout=30)
-        with output_filename.open("wb") as output_file:
-            output_file.write(request.content)
+        audio_data = io.BytesIO(request.content)
+        audio_data.seek(0)
+        audio_segment = pydub.AudioSegment.from_file(audio_data, format=extension)
+        audio_segment = audio_segment.set_channels(1)
+        audio_segment.export(output_filename, format="mp3", bitrate="92k")
 
 
 if __name__ == "__main__":
